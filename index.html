@@ -9,7 +9,7 @@ canvas{display:block;touch-action:manipulation}
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById("c"),x=c.getContext("2d");
-let w,h,cx,cy,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=0,state=0,last=0,spawnT=0,shake=0;
+let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=0,state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff";
 const TAU=Math.PI*2;
 function resize(){
   dpr=devicePixelRatio||1;
@@ -18,12 +18,13 @@ function resize(){
   c.style.width=w+"px";c.style.height=h+"px";
   x.setTransform(dpr,0,0,dpr,0,0);
   cx=w/2;cy=h/2;
-  r1=Math.min(w,h)*0.18;
-  r2=r1*1.8;
+  base1=Math.min(w,h)*0.18;
+  base2=base1*1.8;
+  r1=base1;r2=base2;
 }
 addEventListener("resize",resize);resize();
 function reset(){
-  obs=[];gems=[];parts=[];orbit=0;score=0;bullets=0;spawnT=0;state=1;shake=0;
+  obs=[];gems=[];parts=[];orbit=0;score=0;bullets=0;spawnT=0;state=1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;
 }
 function tap(){
   if(state===0)reset();
@@ -55,6 +56,14 @@ function burst(px,py,col,n){
 function loop(t){
   requestAnimationFrame(loop);
   const dt=Math.min(.033,(t-last||0)/1e3);last=t||0;
+  if(hit>0)hit=Math.max(0,hit-dt*2.2);
+  shiftT-=dt;
+  if(shiftT<=0){targetShift=1-targetShift;shiftT=3+Math.random()*4;}
+  ringShift+= (targetShift-ringShift)*dt*0.6;
+  const d1=1+Math.sin(t/900)*.08,d2=1+Math.sin(t/750+1.7)*.06;
+  const a=base1*d1,b=base2*d2;
+  r1=a+(b-a)*ringShift;
+  r2=b+(a-b)*ringShift;
   if(state===1){
     const speed=1.6+score*0.02;
     spawnT-=dt;if(spawnT<=0){spawn();spawnT=.55+Math.random()*.35-Math.min(.35,score*.002);}
@@ -63,8 +72,8 @@ function loop(t){
       if(o.a<-0.4)obs.splice(i,1);
       else if(Math.abs(o.a)<.12&&o.o===orbit){
         const p=pos(o.a,o.o);
-        if(bullets>0){bullets--;obs.splice(i,1);shake=6;burst(p[0],p[1],"#9df5ff",10);}
-        else {state=2;shake=12;burst(p[0],p[1],"#ff6b6b",18);}
+        if(bullets>0){bullets--;obs.splice(i,1);shake=12;hit=.25;hitC="#9df5ff";burst(p[0],p[1],"#9df5ff",12);}
+        else {state=2;shake=26;hit=.6;hitC="#ff5b5b";burst(p[0],p[1],"#ff6b6b",22);}
       }
     }
     for(let i=gems.length-1;i>=0;i--){
@@ -81,7 +90,8 @@ function loop(t){
   const g=x.createRadialGradient(cx,cy,0,cx,cy,Math.max(w,h));
   g.addColorStop(0,"#08141f");g.addColorStop(1,"#000");
   x.fillStyle=g;x.fillRect(0,0,w,h);
-  if(shake>0){shake-=dt*30;x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);}
+  if(hit>0){x.fillStyle=hitC;x.globalAlpha=hit*.35;x.fillRect(0,0,w,h);x.globalAlpha=1;}
+  if(shake>0){shake-=dt*22;x.translate((Math.random()-.5)*shake*1.4,(Math.random()-.5)*shake*1.4);}
   x.strokeStyle="rgba(80,220,255,.18)";x.lineWidth=2;
   x.beginPath();x.arc(cx,cy,r1,0,TAU);x.arc(cx,cy,r2,0,TAU);x.stroke();
   const pulse=.02+Math.sin(t/500)*.01;
