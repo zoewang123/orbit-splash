@@ -9,8 +9,8 @@ canvas{display:block;touch-action:manipulation}
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById("c"),x=c.getContext("2d");
-let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP=0,waveS=0,waveTS=0;
 const TAU=Math.PI*2,GAP=TAU/36;
+let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0;
 const ad=(a,b)=>{let d=Math.abs(a-b)%TAU;return d>Math.PI?TAU-d:d;};
 function resize(){
   dpr=devicePixelRatio||1;
@@ -25,7 +25,7 @@ function resize(){
 }
 addEventListener("resize",resize);resize();
 function reset(){
-  obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP=0;waveS=0;waveTS=0;
+  obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
 }
 function tap(){
   if(state===0)reset();
@@ -51,13 +51,14 @@ function drawText(t,y,s){
   x.font=(s||24)+"px \"Trebuchet MS\",Verdana,sans-serif";
   x.textAlign="center";x.fillText(t,cx,y);
 }
-function waveV(a){
-  const m=waveM*waveM*(3-2*waveM),ap=a+waveP;
+function waveV(a,p){
+  const m=waveM*waveM*(3-2*waveM),ap=a+p;
   return (1-m)*Math.cos(ap*waveK)+m*Math.cos(ap*waveK2);
 }
 function radAt(a,o){
   const r=o?r2:r1;
-  return r*(1+waveA*waveV(a));
+  const p=o?waveP2:waveP1;
+  return r*(1+waveA*waveV(a,p));
 }
 function pos(a,o){
   const r=radAt(a,o);
@@ -87,14 +88,17 @@ function loop(t){
       waveK2=2*(1+(Math.random()*4|0));
       waveM=0;
       waveTM=1.2+Math.random()*1.8;
-      waveTS=(Math.random()<.5?-1:1)*(.4+Math.random()*1.4);
+      waveTS1=(Math.random()<.5?-1:1)*(.3+Math.random()*1.2);
+      waveTS2=(Math.random()<.5?-1:1)*(.5+Math.random()*1.6);
       waveT=2+Math.random()*3;
     }
     waveA+= (waveTA-waveA)*dt*0.7;
     if(waveM<1){waveM=Math.min(1,waveM+dt/waveTM);if(waveM>=1)waveK=waveK2;}
-    waveS+= (waveTS-waveS)*dt*0.8;
-    waveP+= dt*waveS;
-    if(waveP>TAU)waveP-=TAU;else if(waveP<-TAU)waveP+=TAU;
+    waveS1+= (waveTS1-waveS1)*dt*0.8;
+    waveS2+= (waveTS2-waveS2)*dt*0.8;
+    waveP1+= dt*waveS1;waveP2+= dt*waveS2;
+    if(waveP1>TAU)waveP1-=TAU;else if(waveP1<-TAU)waveP1+=TAU;
+    if(waveP2>TAU)waveP2-=TAU;else if(waveP2<-TAU)waveP2+=TAU;
   }else{
     waveTA=0;waveA+= (waveTA-waveA)*dt*1.2;
   }
@@ -132,11 +136,11 @@ function loop(t){
   if(hit>0){x.fillStyle=hitC;x.globalAlpha=hit*.35;x.fillRect(0,0,w,h);x.globalAlpha=1;}
   if(shake>0){shake-=dt*22;x.translate((Math.random()-.5)*shake*1.4,(Math.random()-.5)*shake*1.4);}
   x.strokeStyle="rgba(80,220,255,.18)";x.lineWidth=2;
-  function ringPath(r){
+  function ringPath(r,p){
     if(waveA>.002){
       const n=48,pts=[];
       for(let i=0;i<n;i++){
-        const a=i/n*TAU,rr=r*(1+waveA*waveV(a));
+        const a=i/n*TAU,rr=r*(1+waveA*waveV(a,p));
         pts.push([cx+Math.sin(a)*rr,cy-Math.cos(a)*rr]);
       }
       const p0=pts[0],pN=pts[n-1];
@@ -147,7 +151,7 @@ function loop(t){
       }
     }else x.arc(cx,cy,r,0,TAU);
   }
-  x.beginPath();ringPath(r1);ringPath(r2);x.stroke();
+  x.beginPath();ringPath(r1,waveP1);ringPath(r2,waveP2);x.stroke();
   const pulse=.02+Math.sin(t/500)*.01;
   function drawDot(a,o,col,rad){
     const r=radAt(a,o),px=cx+Math.sin(a)*r,py=cy-Math.cos(a)*r;
