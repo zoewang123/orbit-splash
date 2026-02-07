@@ -53,6 +53,8 @@ function startAudio(){
   src.start(0);arr=new Uint8Array(an.fftSize);beatT=ac.currentTime+(beatOff||0);
 }
 function stopAudio(){if(src)try{src.stop()}catch(e){}src=0;}
+// Beat analysis adapted from BeatDetect.js method (peak-picking + interval grouping + offset).
+// Source: https://arthurbeaulieu.github.io/BeatDetect.js/ (see docs for algorithm details)
 function bd(buf){
   return new Promise(r=>{
     if(!OC)return r({bpm:0,offset:0});
@@ -258,10 +260,10 @@ function loop(t){
   x.fillStyle=g;x.fillRect(0,0,w,h);
   if(hit>0){x.fillStyle=hitC;x.globalAlpha=hit*.35;x.fillRect(0,0,w,h);x.globalAlpha=1;}
   if(shake>0){shake-=dt*22;x.translate((Math.random()-.5)*shake*1.4,(Math.random()-.5)*shake*1.4);}
-  x.strokeStyle="rgba(80,220,255,.18)";x.lineWidth=2;
+  x.strokeStyle="rgba(80,220,255,.18)";x.lineWidth=2.2;
   function ringColor(p){
-    const h=160+120*(0.5+0.5*Math.sin(p)),l=52,a=.22+.2*waveA;
-    return "hsla("+h+",85%,"+l+"%,"+a+")";
+    const h=160+120*(0.5+0.5*Math.sin(p)),l=66,a=.35+.25*waveA;
+    return "hsla("+h+",95%,"+l+"%,"+a+")";
   }
   function ringPath(r,p){
     if(waveA>.002){
@@ -278,8 +280,9 @@ function loop(t){
       }
     }else x.arc(cx,cy,r,0,TAU);
   }
-  x.beginPath();ringPath(r1,waveP1);x.strokeStyle=ringColor(waveP1);x.stroke();
-  x.beginPath();ringPath(r2,waveP2);x.strokeStyle=ringColor(waveP2);x.stroke();
+  x.beginPath();ringPath(r1,waveP1);x.strokeStyle=ringColor(waveP1);x.shadowBlur=14;x.shadowColor=x.strokeStyle;x.stroke();
+  x.beginPath();ringPath(r2,waveP2);x.strokeStyle=ringColor(waveP2);x.shadowBlur=14;x.shadowColor=x.strokeStyle;x.stroke();
+  x.shadowBlur=0;
   const pulse=.02+Math.sin(t/500)*.01;
   function drawDot(a,o,col,rad){
     const r=radAt(a,o),px=cx+Math.sin(a)*r,py=cy-Math.cos(a)*r;
