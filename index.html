@@ -26,7 +26,7 @@ function resize(){
 addEventListener("resize",resize);resize();
 function reset(s){
   obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=s||1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
-  if(musicMode&&buf&&state!==5)startAudio();else stopAudio();
+  if(musicMode&&buf&&state!==5)startAudio(state===3);else stopAudio();
 }
 const hitBtn=(e,x,y,w,h)=>e&&w&&e.clientX>x-w/2&&e.clientX<x+w/2&&e.clientY>y-h/2&&e.clientY<y+h/2;
 function tap(e){
@@ -35,7 +35,11 @@ function tap(e){
     if(hitBtn(e,musX,musY,musW,musH)){musicMode=1;reset(5);return;}
     return;
   }else if(state===2)reset();
-  else if(state===3){if(hitBtn(e,upX,upY,upW,upH))return;state=1;}
+  else if(state===3){
+    if(hitBtn(e,upX,upY,upW,upH))return;
+    startAudio(false);
+    state=1;
+  }
   else if(state===4){state=1;}
   else if(state===5)return;
   else orbit=1-orbit;
@@ -49,17 +53,24 @@ addEventListener("click",e=>{
 addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp"||e.key==="ArrowDown")tap();});
 const inp=document.createElement("input");
 inp.type="file";inp.accept="audio/*,audio/mpeg,audio/mp3,audio/wav,audio/m4a";inp.style.display="none";document.body.appendChild(inp);
-function startAudio(){
+function startAudio(loop){
   if(!AC||!buf||!musicMode)return;
   if(!ac)ac=new AC();
   if(ac.state==="suspended")ac.resume();
-  if(src)try{src.stop()}catch(e){}
+  if(src)try{src.onended=null;src.stop()}catch(e){}
   src=ac.createBufferSource();src.buffer=buf;
+  src.loop=!!loop;
   an=ac.createAnalyser();an.fftSize=256;
   src.connect(an);an.connect(ac.destination);
+  src.onended=()=>{
+    if(src&&musicMode&&state===1){
+      state=2;
+      src=0;an=0;arr=0;
+    }
+  };
   src.start(0);arr=new Uint8Array(an.fftSize);musicStart=ac.currentTime;beatT=ac.currentTime+(beatOff||0);
 }
-function stopAudio(){if(src)try{src.stop()}catch(e){}src=0;}
+function stopAudio(){if(src)try{src.onended=null;src.stop()}catch(e){}src=0;}
 // Beat analysis adapted from BeatDetect.js method (peak-picking + interval grouping + offset).
 // Source: https://arthurbeaulieu.github.io/BeatDetect.js/ (see docs for algorithm details)
 function bd(buf){
@@ -345,7 +356,7 @@ function loop(t){
     [endX,endY,endW,endH]=drawBtn("Endless",cx,by);
     [musX,musY,musW,musH]=drawBtn("Music Go!",cx,by+40);
   }else if(state===2){
-    drawText("Crash!",cy-20,34);
+    drawText("Score "+(score|0),cy-20,34);
     drawText("Tap to retry",cy+18,18);
   }
   if(state===4){
