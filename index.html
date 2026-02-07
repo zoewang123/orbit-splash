@@ -136,6 +136,10 @@ function loop(t){
   if(hit>0){x.fillStyle=hitC;x.globalAlpha=hit*.35;x.fillRect(0,0,w,h);x.globalAlpha=1;}
   if(shake>0){shake-=dt*22;x.translate((Math.random()-.5)*shake*1.4,(Math.random()-.5)*shake*1.4);}
   x.strokeStyle="rgba(80,220,255,.18)";x.lineWidth=2;
+  function ringColor(p){
+    const h=160+120*(0.5+0.5*Math.sin(p)),l=52,a=.22+.2*waveA;
+    return "hsla("+h+",85%,"+l+"%,"+a+")";
+  }
   function ringPath(r,p){
     if(waveA>.002){
       const n=48,pts=[];
@@ -151,7 +155,8 @@ function loop(t){
       }
     }else x.arc(cx,cy,r,0,TAU);
   }
-  x.beginPath();ringPath(r1,waveP1);ringPath(r2,waveP2);x.stroke();
+  x.beginPath();ringPath(r1,waveP1);x.strokeStyle=ringColor(waveP1);x.stroke();
+  x.beginPath();ringPath(r2,waveP2);x.strokeStyle=ringColor(waveP2);x.stroke();
   const pulse=.02+Math.sin(t/500)*.01;
   function drawDot(a,o,col,rad){
     const r=radAt(a,o),px=cx+Math.sin(a)*r,py=cy-Math.cos(a)*r;
