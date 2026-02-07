@@ -10,7 +10,7 @@ canvas{display:block;touch-action:manipulation}
 <script>
 const c=document.getElementById("c"),x=c.getContext("2d");
 const TAU=Math.PI*2,GAP=TAU/36,AC=window.AudioContext||window.webkitAudioContext,OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
-let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0,musicReady=0,musicMode=0,ac=0,an=0,src=0,buf=0,arr=0,audioE=0,audS=0,audI=0,audL=0,bpm=0,beatP=0,beatT=0,beatOff=0,btnX=0,btnY=0,btnW=0,btnH=0;
+let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0,musicReady=0,musicMode=0,ac=0,an=0,src=0,buf=0,arr=0,audioE=0,audS=0,audI=0,audL=0,bpm=0,beatP=0,beatT=0,beatOff=0,musicStart=0,btnX=0,btnY=0,btnW=0,btnH=0;
 const ad=(a,b)=>{let d=Math.abs(a-b)%TAU;return d>Math.PI?TAU-d:d;};
 function resize(){
   dpr=devicePixelRatio||1;
@@ -30,7 +30,7 @@ function reset(){
 }
 function tap(e){
   if(state===0){
-    if(e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-18&&e.clientY<btnY+8){
+    if(e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-btnH/2&&e.clientY<btnY+btnH/2){
       if(musicReady>0){musicMode=1;reset();}else if(musicReady===0){inp.value="";inp.click();}
       return;
     }
@@ -50,7 +50,7 @@ function startAudio(){
   src=ac.createBufferSource();src.buffer=buf;
   an=ac.createAnalyser();an.fftSize=256;
   src.connect(an);an.connect(ac.destination);
-  src.start(0);arr=new Uint8Array(an.fftSize);beatT=ac.currentTime+(beatOff||0);
+  src.start(0);arr=new Uint8Array(an.fftSize);musicStart=ac.currentTime;beatT=ac.currentTime+(beatOff||0);
 }
 function stopAudio(){if(src)try{src.stop()}catch(e){}src=0;}
 // Beat analysis adapted from BeatDetect.js method (peak-picking + interval grouping + offset).
@@ -184,6 +184,7 @@ function loop(t){
     audL+= (audioE-audL)*dt*.18;
   }else{audS=audI=audL=0;}
   if(hit>0)hit=Math.max(0,hit-dt*2.2);
+  const warm=musicMode&&ac?Math.min(1,(ac.currentTime-musicStart)/3):1;
   const bt=(musicMode&&beatP&&ac)?((ac.currentTime-beatT)/beatP)%1:0;
   const bp=musicMode&&beatP?Math.exp(-Math.pow(Math.min(bt,1-bt)*8,2)):0;
   const shiftOn=musicMode?score>=20:score>=40;
@@ -209,10 +210,11 @@ function loop(t){
     }
     if(musicMode){
       const rel=audL?audioE/audL:0,boost=Math.max(0,audS-audI);
-      inten=Math.min(1,Math.max(0,(rel-1)*.4)+boost*1.1+bp*.4);
-      const ta=.04+Math.min(.26,audS*.45+Math.max(0,rel-1)*.08+bp*.18);
+      const ib=Math.min(1,Math.max(0,(rel-1)*.4)+boost*1.1+bp*.4);
+      inten=ib*(.3+.7*warm);
+      const ta=(.04+Math.min(.26,audS*.45+Math.max(0,rel-1)*.08+bp*.18))*warm;
       waveA+= (ta-waveA)*dt*3;
-      const kt=2+2*Math.min(3,(inten*2.6)|0);
+      const kt=2+2*Math.min(3,Math.round(inten*3));
       if(kt!==waveK2){waveK2=kt;waveM=0;waveTM=.45+(1-inten)*.55;}
     }else{
       waveA+= (waveTA-waveA)*dt*0.7;
@@ -318,8 +320,14 @@ function loop(t){
     drawText("Tap to start",cy+18,18);
     const label=musicReady>0?"Music Mode":(musicReady===-2?"Analyzing...":(musicReady<0?"Loading...":"Load Music"));
     x.font="18px \"Trebuchet MS\",Verdana,sans-serif";
-    btnW=x.measureText(label).width+20;btnH=24;btnX=cx;btnY=cy+58;
-    x.strokeStyle="rgba(255,255,255,.2)";x.strokeRect(btnX-btnW/2,btnY-16,btnW,btnH);
+    btnW=x.measureText(label).width+36;btnH=30;btnX=cx;btnY=h-46;
+    x.fillStyle="rgba(10,30,40,.65)";
+    x.strokeStyle="rgba(160,230,255,.4)";
+    x.lineWidth=1.5;
+    x.beginPath();
+    x.roundRect(btnX-btnW/2,btnY-18,btnW,btnH,14);
+    x.fill();x.stroke();
+    x.fillStyle="rgba(200,245,255,.9)";
     drawText(label,btnY,18);
   }else if(state===2){
     drawText("Crash!",cy-20,34);
