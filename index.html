@@ -70,7 +70,7 @@ function loop(t){
     if(shiftT<=0){targetShift=1-targetShift;shiftT=3+Math.random()*4;}
   }else{targetShift=0;}
   ringShift+= (targetShift-ringShift)*dt*0.6;
-  const waveOn=score>=20;
+  const waveOn=score>=20||shiftOn;
   if(waveOn){
     waveT-=dt;
     if(waveT<=0){
