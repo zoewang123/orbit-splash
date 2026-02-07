@@ -28,17 +28,21 @@ function reset(){
   obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
   if(musicMode&&buf)startAudio();else stopAudio();
 }
+const hitBtn=e=>e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-btnH/2&&e.clientY<btnY+btnH/2;
 function tap(e){
   if(state===0){
-    if(e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-btnH/2&&e.clientY<btnY+btnH/2){
-      if(musicReady>0){musicMode=1;reset();}else if(musicReady===0){inp.value="";inp.click();}
-      return;
-    }
+    if(hitBtn(e))return;
     musicMode=0;reset();return;
   }else if(state===2)reset();
   else orbit=1-orbit;
 }
 addEventListener("pointerdown",tap);
+addEventListener("click",e=>{
+  if(state===0&&hitBtn(e)){
+    if(musicReady>0){musicMode=1;reset();}
+    else if(musicReady===0){inp.value="";inp.click();}
+  }
+});
 addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp"||e.key==="ArrowDown")tap();});
 const inp=document.createElement("input");
 inp.type="file";inp.accept="audio/*";inp.style.display="none";document.body.appendChild(inp);
