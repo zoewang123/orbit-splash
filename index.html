@@ -9,8 +9,8 @@ canvas{display:block;touch-action:manipulation}
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById("c"),x=c.getContext("2d");
-const TAU=Math.PI*2,GAP=TAU/36;
-let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0;
+const TAU=Math.PI*2,GAP=TAU/36,AC=window.AudioContext||window.webkitAudioContext,OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0,musicReady=0,musicMode=0,ac=0,an=0,src=0,buf=0,arr=0,audioE=0,audS=0,audI=0,audL=0,bpm=0,beatP=0,beatT=0,beatOff=0,btnX=0,btnY=0,btnW=0,btnH=0;
 const ad=(a,b)=>{let d=Math.abs(a-b)%TAU;return d>Math.PI?TAU-d:d;};
 function resize(){
   dpr=devicePixelRatio||1;
@@ -26,14 +26,112 @@ function resize(){
 addEventListener("resize",resize);resize();
 function reset(){
   obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
+  if(musicMode&&buf)startAudio();else stopAudio();
 }
-function tap(){
-  if(state===0)reset();
-  else if(state===2)reset();
+function tap(e){
+  if(state===0){
+    if(e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-18&&e.clientY<btnY+8){
+      if(musicReady>0){musicMode=1;reset();}else if(musicReady===0){inp.value="";inp.click();}
+      return;
+    }
+    musicMode=0;reset();return;
+  }else if(state===2)reset();
   else orbit=1-orbit;
 }
 addEventListener("pointerdown",tap);
 addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp"||e.key==="ArrowDown")tap();});
+const inp=document.createElement("input");
+inp.type="file";inp.accept="audio/*";inp.style.display="none";document.body.appendChild(inp);
+function startAudio(){
+  if(!AC||!buf||!musicMode)return;
+  if(!ac)ac=new AC();
+  if(ac.state==="suspended")ac.resume();
+  if(src)try{src.stop()}catch(e){}
+  src=ac.createBufferSource();src.buffer=buf;
+  an=ac.createAnalyser();an.fftSize=256;
+  src.connect(an);an.connect(ac.destination);
+  src.start(0);arr=new Uint8Array(an.fftSize);beatT=ac.currentTime+(beatOff||0);
+}
+function stopAudio(){if(src)try{src.stop()}catch(e){}src=0;}
+function bd(buf){
+  return new Promise(r=>{
+    if(!OC)return r({bpm:0,offset:0});
+    const sr=buf.sampleRate,len=Math.min(buf.length,(sr*15)|0);
+    const off=new OC(2,len,sr),src=off.createBufferSource();
+    const lo=off.createBiquadFilter(),hi=off.createBiquadFilter();
+    src.buffer=buf;lo.type="lowpass";lo.frequency.value=150;hi.type="highpass";hi.frequency.value=100;
+    src.connect(lo);lo.connect(hi);hi.connect(off.destination);
+    src.start(0,0,len/sr);
+    off.startRendering().then(b=>{
+      const L=b.getChannelData(0),R=b.getChannelData(1),p=pk(L,R,sr),t=tp(p,sr),o=of(L,sr,t);
+      r({bpm:t,offset:o.offset||0,firstBar:o.firstBar||0});
+    });
+  });
+}
+function pk(L,R,sr){
+  const ps=sr/2,parts=(L.length/ps)|0,peaks=[];
+  for(let i=0;i<parts;i++){
+    let m=0,pos=i*ps;
+    for(let j=pos;j<(i+1)*ps&&j<L.length;j++){
+      const v=Math.max(Math.abs(L[j]),Math.abs(R[j]||0));
+      if(v>m){m=v;pos=j;}
+    }
+    peaks.push({pos,vol:m});
+  }
+  peaks.sort((a,b)=>b.vol-a.vol);
+  peaks.splice((peaks.length*0.5)|0);
+  peaks.sort((a,b)=>a.pos-b.pos);
+  return peaks;
+}
+function tp(peaks,sr){
+  const g=[];
+  for(let i=0;i<peaks.length;i++)for(let j=1;j<10&&i+j<peaks.length;j++){
+    let t=60*sr/(peaks[i+j].pos-peaks[i].pos);
+    while(t<90)t*=2;while(t>180)t/=2;t=Math.round(t);
+    const e=g.find(v=>v.t===t);if(e)e.c++;else g.push({t,c:1});
+  }
+  g.sort((a,b)=>b.c-a.c);
+  return g[0]?g[0].t:0;
+}
+function loff(pos,sr,bpm){
+  const bt=60/bpm;let o=pos/sr;
+  while(o>=bt)o-=bt*4;
+  if(o<0)while(o<0)o+=bt;
+  return o;
+}
+function of(data,sr,bpm){
+  if(!bpm)return {offset:0,firstBar:0};
+  const ps=sr/2,parts=(data.length/ps)|0,peaks=[];
+  for(let i=0;i<parts;i++){
+    let m=0,pos=i*ps;
+    for(let j=pos;j<(i+1)*ps&&j<data.length;j++){
+      const v=Math.abs(data[j]);if(v>m){m=v;pos=j;}
+    }
+    peaks.push({pos:pos-Math.round((60/bpm*.05)*sr),vol:m});
+  }
+  if(!peaks.length)return {offset:0,firstBar:0};
+  const u=peaks.slice();peaks.sort((a,b)=>b.vol-a.vol);
+  const ref=loff(peaks[0].pos,sr,bpm);let mean=0,div=0;
+  for(const p of peaks){const o=loff(p.pos,sr,bpm);if(Math.abs(o-ref)<.05){mean+=o;div++;}}
+  let i=0;while(i<u.length&&u[i].vol<.02)i++;
+  let fb=(u[i]?u[i].pos:0)/sr,m=div?mean/div:0;
+  if(fb>m&&fb<60/bpm)fb=m;
+  return {offset:m,firstBar:fb};
+}
+inp.onchange=()=>{
+  const f=inp.files&&inp.files[0];if(!f||!AC)return;
+  musicReady=-1;
+  const r=new FileReader();
+  r.onload=e=>{
+    if(!ac)ac=new AC();
+    ac.resume();
+    ac.decodeAudioData(e.target.result).then(b=>{
+      buf=b;musicReady=-2;
+      bd(b).then(info=>{bpm=info.bpm||0;beatP=bpm?60/bpm:0;beatOff=info.offset||0;musicReady=1;});
+    });
+  };
+  r.readAsArrayBuffer(f);
+};
 function spawn(){
   let a=3.2+Math.random()*2.6,o=Math.random()<.5?0:1;
   if(Math.random()<.22){gems.push({a,o});return;}
@@ -73,29 +171,54 @@ function burst(px,py,col,n){
 function loop(t){
   requestAnimationFrame(loop);
   const dt=Math.min(.033,(t-last||0)/1e3);last=t||0;
+  if(an&&arr){
+    an.getByteTimeDomainData(arr);
+    let s=0;for(let i=0;i<arr.length;i++){const v=arr[i]-128;s+=v*v;}
+    audioE=Math.sqrt(s/arr.length)/128;
+  }else audioE=0;
+  if(musicMode){
+    audS+= (audioE-audS)*dt*6;
+    audI+= (audioE-audI)*dt*1.2;
+    audL+= (audioE-audL)*dt*.18;
+  }else{audS=audI=audL=0;}
   if(hit>0)hit=Math.max(0,hit-dt*2.2);
-  const shiftOn=score>=40;
+  const bt=(musicMode&&beatP&&ac)?((ac.currentTime-beatT)/beatP)%1:0;
+  const bp=musicMode&&beatP?Math.exp(-Math.pow(Math.min(bt,1-bt)*8,2)):0;
+  const shiftOn=musicMode?score>=20:score>=40;
   if(shiftOn){
     shiftT-=dt;
     if(shiftT<=0){targetShift=1-targetShift;shiftT=3+Math.random()*4;}
   }else{targetShift=0;}
   ringShift+= (targetShift-ringShift)*dt*0.6;
-  const waveOn=score>=20||shiftOn;
+  const waveOn=musicMode||score>=20||shiftOn;
   if(waveOn){
+    let inten=0;
     waveT-=dt;
     if(waveT<=0){
-      waveTA=.05+Math.random()*.08;
-      waveK2=2*(1+(Math.random()*4|0));
-      waveM=0;
-      waveTM=1.2+Math.random()*1.8;
-      waveTS1=(Math.random()<.5?-1:1)*(.3+Math.random()*1.2);
-      waveTS2=(Math.random()<.5?-1:1)*(.5+Math.random()*1.6);
-      waveT=2+Math.random()*3;
+      waveTS1=(Math.random()<.5?-1:1)*(.2+Math.random()*1.2);
+      waveTS2=(Math.random()<.5?-1:1)*(.3+Math.random()*1.5);
+      waveT=(musicMode?2.2:2)+Math.random()*(musicMode?2.6:3);
+      if(!musicMode){
+        waveK2=2*(1+(Math.random()*4|0));
+        waveM=0;
+        waveTM=1.2+Math.random()*1.8;
+        waveTA=.05+Math.random()*.08;
+      }
     }
-    waveA+= (waveTA-waveA)*dt*0.7;
+    if(musicMode){
+      const rel=audL?audioE/audL:0,boost=Math.max(0,audS-audI);
+      inten=Math.min(1,Math.max(0,(rel-1)*.4)+boost*1.1+bp*.4);
+      const ta=.04+Math.min(.26,audS*.45+Math.max(0,rel-1)*.08+bp*.18);
+      waveA+= (ta-waveA)*dt*3;
+      const kt=2+2*Math.min(3,(inten*2.6)|0);
+      if(kt!==waveK2){waveK2=kt;waveM=0;waveTM=.45+(1-inten)*.55;}
+    }else{
+      waveA+= (waveTA-waveA)*dt*0.7;
+    }
     if(waveM<1){waveM=Math.min(1,waveM+dt/waveTM);if(waveM>=1)waveK=waveK2;}
-    waveS1+= (waveTS1-waveS1)*dt*0.8;
-    waveS2+= (waveTS2-waveS2)*dt*0.8;
+    const m=musicMode?(.5+inten*1.8):1;
+    waveS1+= (waveTS1*m-waveS1)*dt*1;
+    waveS2+= (waveTS2*m-waveS2)*dt*1;
     waveP1+= dt*waveS1;waveP2+= dt*waveS2;
     if(waveP1>TAU)waveP1-=TAU;else if(waveP1<-TAU)waveP1+=TAU;
     if(waveP2>TAU)waveP2-=TAU;else if(waveP2<-TAU)waveP2+=TAU;
@@ -189,7 +312,12 @@ function loop(t){
   if(bc>max){x.fillRect(bx-sp-3,by-1,6,2);}
   if(state===0){
     drawText("Orbit Swap",cy-20,36);
-    drawText("Tap to switch rings",cy+20,18);
+    drawText("Tap to start",cy+18,18);
+    const label=musicReady>0?"Music Mode":(musicReady===-2?"Analyzing...":(musicReady<0?"Loading...":"Load Music"));
+    x.font="18px \"Trebuchet MS\",Verdana,sans-serif";
+    btnW=x.measureText(label).width+20;btnH=24;btnX=cx;btnY=cy+58;
+    x.strokeStyle="rgba(255,255,255,.2)";x.strokeRect(btnX-btnW/2,btnY-16,btnW,btnH);
+    drawText(label,btnY,18);
   }else if(state===2){
     drawText("Crash!",cy-20,34);
     drawText("Tap to retry",cy+18,18);
