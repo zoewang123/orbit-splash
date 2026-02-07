@@ -10,7 +10,8 @@ canvas{display:block;touch-action:manipulation}
 <script>
 const c=document.getElementById("c"),x=c.getContext("2d");
 let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=0,state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP=0,waveS=0,waveTS=0;
-const TAU=Math.PI*2;
+const TAU=Math.PI*2,GAP=TAU/36;
+const ad=(a,b)=>{let d=Math.abs(a-b)%TAU;return d>Math.PI?TAU-d:d;};
 function resize(){
   dpr=devicePixelRatio||1;
   w=innerWidth;h=innerHeight;
@@ -34,9 +35,16 @@ function tap(){
 addEventListener("pointerdown",tap);
 addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp"||e.key==="ArrowDown")tap();});
 function spawn(){
-  const a=3.2+Math.random()*2.6,o=Math.random()<.5?0:1;
-  if(Math.random()<.22)gems.push({a,o});
-  else obs.push({a,o});
+  let a=3.2+Math.random()*2.6,o=Math.random()<.5?0:1;
+  if(Math.random()<.22){gems.push({a,o});return;}
+  let ok=false;
+  for(let i=0;i<6;i++){
+    ok=true;
+    for(const ob of obs)if(ob.o!==o&&ad(a,ob.a)<GAP){ok=false;break;}
+    if(ok)break;
+    a=3.2+Math.random()*2.6;
+  }
+  if(ok)obs.push({a,o});else gems.push({a,o});
 }
 function drawText(t,y,s){
   x.fillStyle="rgba(255,255,255,.9)";
