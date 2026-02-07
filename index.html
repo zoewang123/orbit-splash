@@ -24,8 +24,8 @@ function resize(){
   r1=base1;r2=base2;
 }
 addEventListener("resize",resize);resize();
-function reset(){
-  obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
+function reset(s){
+  obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=s||1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
   if(musicMode&&buf)startAudio();else stopAudio();
 }
 const hitBtn=e=>e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-btnH/2&&e.clientY<btnY+btnH/2;
@@ -34,18 +34,19 @@ function tap(e){
     if(hitBtn(e))return;
     musicMode=0;reset();return;
   }else if(state===2)reset();
+  else if(state===3){state=1;}
   else orbit=1-orbit;
 }
 addEventListener("pointerdown",tap);
 addEventListener("click",e=>{
   if(state===0&&hitBtn(e)){
-    if(musicReady>0){musicMode=1;reset();}
+    if(musicReady>0){musicMode=1;reset(3);}
     else if(musicReady===0){inp.value="";inp.click();}
   }
 });
 addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp"||e.key==="ArrowDown")tap();});
 const inp=document.createElement("input");
-inp.type="file";inp.accept="audio/*";inp.style.display="none";document.body.appendChild(inp);
+inp.type="file";inp.accept="audio/*,audio/mpeg,audio/mp3,audio/wav,audio/m4a";inp.style.display="none";document.body.appendChild(inp);
 function startAudio(){
   if(!AC||!buf||!musicMode)return;
   if(!ac)ac=new AC();
@@ -289,6 +290,7 @@ function loop(t){
   x.beginPath();ringPath(r1,waveP1);x.strokeStyle=ringColor(waveP1);x.shadowBlur=14;x.shadowColor=x.strokeStyle;x.stroke();
   x.beginPath();ringPath(r2,waveP2);x.strokeStyle=ringColor(waveP2);x.shadowBlur=14;x.shadowColor=x.strokeStyle;x.stroke();
   x.shadowBlur=0;
+  if(state!==3){
   const pulse=.02+Math.sin(t/500)*.01;
   function drawDot(a,o,col,rad){
     const r=radAt(a,o),px=cx+Math.sin(a)*r,py=cy-Math.cos(a)*r;
@@ -336,6 +338,7 @@ function loop(t){
   }else if(state===2){
     drawText("Crash!",cy-20,34);
     drawText("Tap to retry",cy+18,18);
+  }
   }
   x.setTransform(dpr,0,0,dpr,0,0);
 }
