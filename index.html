@@ -10,7 +10,7 @@ canvas{display:block;touch-action:manipulation}
 <script>
 const c=document.getElementById("c"),x=c.getContext("2d");
 const TAU=Math.PI*2,GAP=TAU/36,AC=window.AudioContext||window.webkitAudioContext,OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
-let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0,musicReady=0,musicMode=0,ac=0,an=0,src=0,buf=0,arr=0,audioE=0,audS=0,audI=0,audL=0,bpm=0,beatP=0,beatT=0,beatOff=0,musicStart=0,btnX=0,btnY=0,btnW=0,btnH=0;
+let w,h,cx,cy,base1,base2,r1,r2,dpr=1,obs=[],gems=[],parts=[],orbit=0,score=0,bullets=[],state=0,last=0,spawnT=0,shake=0,ringShift=0,targetShift=0,shiftT=0,hit=0,hitC="#fff",waveA=0,waveK=4,waveK2=4,waveM=1,waveTM=1,waveTA=0,waveT=0,waveP1=0,waveP2=TAU/4,waveS1=0,waveS2=0,waveTS1=0,waveTS2=0,musicReady=0,musicMode=0,ac=0,an=0,src=0,buf=0,arr=0,audioE=0,audS=0,audI=0,audL=0,bpm=0,beatP=0,beatT=0,beatOff=0,musicStart=0,endX=0,endY=0,endW=0,endH=0,musX=0,musY=0,musW=0,musH=0,upX=0,upY=0,upW=0,upH=0;
 const ad=(a,b)=>{let d=Math.abs(a-b)%TAU;return d>Math.PI?TAU-d:d;};
 function resize(){
   dpr=devicePixelRatio||1;
@@ -26,22 +26,24 @@ function resize(){
 addEventListener("resize",resize);resize();
 function reset(s){
   obs=[];gems=[];parts=[];orbit=0;score=0;bullets=[];spawnT=0;state=s||1;shake=0;ringShift=0;targetShift=0;shiftT=2+Math.random()*2;hit=0;waveA=0;waveTA=0;waveK=4;waveK2=4;waveM=1;waveTM=1;waveT=0;waveP1=0;waveP2=TAU/4;waveS1=0;waveS2=0;waveTS1=0;waveTS2=0;
-  if(musicMode&&buf)startAudio();else stopAudio();
+  if(musicMode&&buf&&state!==5)startAudio();else stopAudio();
 }
-const hitBtn=e=>e&&btnW&&e.clientX>btnX-btnW/2&&e.clientX<btnX+btnW/2&&e.clientY>btnY-btnH/2&&e.clientY<btnY+btnH/2;
+const hitBtn=(e,x,y,w,h)=>e&&w&&e.clientX>x-w/2&&e.clientX<x+w/2&&e.clientY>y-h/2&&e.clientY<y+h/2;
 function tap(e){
   if(state===0){
-    if(hitBtn(e))return;
-    musicMode=0;reset();return;
+    if(hitBtn(e,endX,endY,endW,endH)){musicMode=0;reset(4);return;}
+    if(hitBtn(e,musX,musY,musW,musH)){musicMode=1;reset(5);return;}
+    return;
   }else if(state===2)reset();
-  else if(state===3){state=1;}
+  else if(state===3){if(hitBtn(e,upX,upY,upW,upH))return;state=1;}
+  else if(state===4){state=1;}
+  else if(state===5)return;
   else orbit=1-orbit;
 }
 addEventListener("pointerdown",tap);
 addEventListener("click",e=>{
-  if(state===0&&hitBtn(e)){
-    if(musicReady>0){musicMode=1;reset(3);}
-    else if(musicReady===0){inp.value="";inp.click();}
+  if((state===3||state===5)&&hitBtn(e,upX,upY,upW,upH)){
+    if(musicReady>=0){inp.value="";inp.click();}
   }
 });
 addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp"||e.key==="ArrowDown")tap();});
@@ -134,7 +136,10 @@ inp.onchange=()=>{
     ac.resume();
     ac.decodeAudioData(e.target.result).then(b=>{
       buf=b;musicReady=-2;
-      bd(b).then(info=>{bpm=info.bpm||0;beatP=bpm?60/bpm:0;beatOff=info.offset||0;musicReady=1;});
+      bd(b).then(info=>{
+        bpm=info.bpm||0;beatP=bpm?60/bpm:0;beatOff=info.offset||0;musicReady=1;
+        if(musicMode)reset(3);
+      });
     });
   };
   r.readAsArrayBuffer(f);
@@ -155,6 +160,17 @@ function drawText(t,y,s){
   x.fillStyle="rgba(255,255,255,.9)";
   x.font=(s||24)+"px \"Trebuchet MS\",Verdana,sans-serif";
   x.textAlign="center";x.fillText(t,cx,y);
+}
+function drawBtn(label,x0,y0){
+  x.font="18px \"Trebuchet MS\",Verdana,sans-serif";
+  const w=x.measureText(label).width+36,h=30;
+  x.fillStyle="rgba(10,30,40,.65)";
+  x.strokeStyle="rgba(160,230,255,.4)";
+  x.lineWidth=1.5;
+  x.beginPath();x.roundRect(x0-w/2,y0-h/2,w,h,14);x.fill();x.stroke();
+  x.fillStyle="rgba(200,245,255,.9)";
+  x.textAlign="center";x.textBaseline="middle";x.fillText(label,x0,y0);x.textBaseline="alphabetic";
+  return [x0,y0,w,h];
 }
 function waveV(a,p){
   const m=waveM*waveM*(3-2*waveM),ap=a+p;
@@ -290,7 +306,7 @@ function loop(t){
   x.beginPath();ringPath(r1,waveP1);x.strokeStyle=ringColor(waveP1);x.shadowBlur=14;x.shadowColor=x.strokeStyle;x.stroke();
   x.beginPath();ringPath(r2,waveP2);x.strokeStyle=ringColor(waveP2);x.shadowBlur=14;x.shadowColor=x.strokeStyle;x.stroke();
   x.shadowBlur=0;
-  if(state!==3){
+  if(state===1||state===2){
   const pulse=.02+Math.sin(t/500)*.01;
   function drawDot(a,o,col,rad){
     const r=radAt(a,o),px=cx+Math.sin(a)*r,py=cy-Math.cos(a)*r;
@@ -321,27 +337,29 @@ function loop(t){
   let bx=cx-(show-1)*sp/2;
   for(let i=0;i<show;i++){x.beginPath();x.arc(bx+i*sp,by,br,0,TAU);x.fill();}
   if(bc>max){x.fillRect(bx-sp-3,by-1,6,2);}
+  }
+  endW=musW=upW=0;
   if(state===0){
     drawText("Orbit Splash",cy-20,36);
-    drawText("Tap to start",cy+18,18);
-    const label=musicReady>0?"Music Mode":(musicReady===-2?"Analyzing...":(musicReady<0?"Loading...":"Load Music"));
-    x.font="18px \"Trebuchet MS\",Verdana,sans-serif";
-    btnW=x.measureText(label).width+36;btnH=30;btnX=cx;btnY=h-46;
-    x.fillStyle="rgba(10,30,40,.65)";
-    x.strokeStyle="rgba(160,230,255,.4)";
-    x.lineWidth=1.5;
-    x.beginPath();
-    x.roundRect(btnX-btnW/2,btnY-18,btnW,btnH,14);
-    x.fill();x.stroke();
-    x.fillStyle="rgba(200,245,255,.9)";
-    drawText(label,btnY,18);
+    const by=h-110;
+    [endX,endY,endW,endH]=drawBtn("Endless",cx,by);
+    [musX,musY,musW,musH]=drawBtn("Music Go!",cx,by+40);
   }else if(state===2){
     drawText("Crash!",cy-20,34);
     drawText("Tap to retry",cy+18,18);
   }
+  if(state===4){
+    drawText("Tap to start",cy+18,18);
+  }
+  if(state===5){
+    drawText("Upload music to begin",cy+18,18);
+    const ul=musicReady===-2?"Analyzing...":(musicReady<0?"Loading...":"Upload Music");
+    [upX,upY,upW,upH]=drawBtn(ul,cx,h-46);
   }
   if(state===3){
     drawText("Tap to start",cy+18,18);
+    const ul=musicReady===-2?"Analyzing...":(musicReady<0?"Loading...":"Upload Music");
+    [upX,upY,upW,upH]=drawBtn(ul,cx,h-46);
   }
   x.setTransform(dpr,0,0,dpr,0,0);
 }
