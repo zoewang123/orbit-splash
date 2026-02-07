@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Orbit Swap</title>
+<title>Orbit Splash</title>
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Trebuchet MS",Verdana,sans-serif}
 canvas{display:block;touch-action:manipulation}
@@ -192,13 +192,13 @@ function loop(t){
   const warm=musicMode&&ac?Math.min(1,(ac.currentTime-musicStart)/3):1;
   const bt=(musicMode&&beatP&&ac)?((ac.currentTime-beatT)/beatP)%1:0;
   const bp=musicMode&&beatP?Math.exp(-Math.pow(Math.min(bt,1-bt)*8,2)):0;
-  const shiftOn=musicMode?score>=20:score>=40;
+  const shiftOn=musicMode?score>=20:score>=15;
   if(shiftOn){
     shiftT-=dt;
     if(shiftT<=0){targetShift=1-targetShift;shiftT=3+Math.random()*4;}
   }else{targetShift=0;}
   ringShift+= (targetShift-ringShift)*dt*0.6;
-  const waveOn=musicMode||score>=20||shiftOn;
+  const waveOn=musicMode||score>=5||shiftOn;
   if(waveOn){
     let inten=0;
     waveT-=dt;
@@ -256,7 +256,7 @@ function loop(t){
       const g=gems[i];g.a-=speed*dt;
       if(g.a<-0.4)gems.splice(i,1);
       else if(Math.abs(g.a)<.12&&g.o===orbit){
-        bullets.push(score+5);gems.splice(i,1);
+        bullets.push(score+10);gems.splice(i,1);
         const p=pos(g.a,g.o);burst(p[0],p[1],"#7dffb3",8);
       }
     }
@@ -322,7 +322,7 @@ function loop(t){
   for(let i=0;i<show;i++){x.beginPath();x.arc(bx+i*sp,by,br,0,TAU);x.fill();}
   if(bc>max){x.fillRect(bx-sp-3,by-1,6,2);}
   if(state===0){
-    drawText("Orbit Swap",cy-20,36);
+    drawText("Orbit Splash",cy-20,36);
     drawText("Tap to start",cy+18,18);
     const label=musicReady>0?"Music Mode":(musicReady===-2?"Analyzing...":(musicReady<0?"Loading...":"Load Music"));
     x.font="18px \"Trebuchet MS\",Verdana,sans-serif";
@@ -338,6 +338,9 @@ function loop(t){
   }else if(state===2){
     drawText("Crash!",cy-20,34);
     drawText("Tap to retry",cy+18,18);
+  }
+  if(state===3){
+    drawText("Tap to start",cy+18,18);
   }
   }
   x.setTransform(dpr,0,0,dpr,0,0);
